@@ -3,20 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FILSA | Control de Inventario</title>
+    <title>FILSA | Control de Inventario Seguro</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
 
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-database-compat.js"></script>
-
-    <style>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-auth-compat.js"></script> <style>
         :root{
             --red:#b11226;
             --red-dark:#8f0e1f;
             --white:#ffffff;
-            --white:#ffffff;
+            --gray:#f4f4f4;
             --success:#1e8449;
         }
 
@@ -96,9 +95,9 @@
             background: var(--red-dark);
         }
 
-        /* --- ESTILOS INVENTARIO (EXISTENTES) --- */
+        /* --- ESTILOS INVENTARIO --- */
         #mainApp {
-            display: none; /* Oculto hasta login */
+            display: none; 
         }
 
         #appWrapper{
@@ -308,8 +307,7 @@
         <h2>Control de Inventario</h2>
         
         <div class="login-field">
-            <label>Usuario</label>
-            <input type="text" id="user" placeholder="Ingrese su usuario">
+            <label>Correo Electrónico</label> <input type="email" id="user" placeholder="ejemplo@filsa.com">
         </div>
         
         <div class="login-field">
@@ -318,7 +316,7 @@
         </div>
         
         <button class="login-btn" onclick="validarLogin()">INGRESAR</button>
-        <p id="loginError" style="color: red; margin-top: 15px; display: none; font-size: 0.9rem;">Credenciales incorrectas</p>
+        <p id="loginError" style="color: red; margin-top: 15px; display: none; font-size: 0.9rem;">Credenciales incorrectas o error de acceso</p>
     </div>
 </div>
 
@@ -338,7 +336,7 @@
         <div id="historyContainer" style="display:none">
             <div class="history-list" id="historyList">Cargando historial...</div>
         </div>
-        <div class="menu-item" onclick="location.reload()" style="background: rgba(0,0,0,0.3); margin-top: 20px;">Cerrar Sesión</div>
+        <div class="menu-item" onclick="cerrarSesion()" style="background: rgba(0,0,0,0.3); margin-top: 20px;">Cerrar Sesión</div>
     </div>
 
     <div id="appWrapper">
@@ -397,27 +395,7 @@
 </div>
 
 <script>
-    // --- CONFIGURACIÓN Y LOGIN ---
-    const CREDENCIALES = {
-        user: "admin",
-        pass: "filsa2025"
-    };
-
-    function validarLogin() {
-        const u = document.getElementById("user").value;
-        const p = document.getElementById("pass").value;
-        const errorMsg = document.getElementById("loginError");
-
-        if(u === CREDENCIALES.user && p === CREDENCIALES.pass) {
-            document.getElementById("loginWrapper").style.display = "none";
-            document.getElementById("mainApp").style.display = "block";
-            init(); // Inicia la conexión con Firebase solo tras el login
-        } else {
-            errorMsg.style.display = "block";
-        }
-    }
-
-    // --- LÓGICA DE INVENTARIO ---
+    // --- CONFIGURACIÓN FIREBASE ---
     const firebaseConfig = {
         apiKey: "AIzaSyB8wVMIhqa9OAFJCt3bzqouip2ICtqJkNQ",
         authDomain: "almacen-cajas-filsa.firebaseapp.com",
@@ -430,9 +408,47 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const auth = firebase.auth(); // MODIFICADO: Instancia de Auth
 
     let inventory = [];
-    const EMAIL = "almacenfilsa@gmail.com";
+    const EMAIL_REQUISICION = "almacenfilsa@gmail.com";
+
+    // --- LÓGICA DE AUTENTICACIÓN (NUEVA) ---
+
+    // Observador que maneja el cambio de pantalla automáticamente
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            // Usuario logueado: Mostramos la App y cargamos datos
+            document.getElementById("loginWrapper").style.display = "none";
+            document.getElementById("mainApp").style.display = "block";
+            init(); 
+        } else {
+            // Usuario fuera: Mostramos Login
+            document.getElementById("loginWrapper").style.display = "flex";
+            document.getElementById("mainApp").style.display = "none";
+        }
+    });
+
+    function validarLogin() {
+        const email = document.getElementById("user").value;
+        const pass = document.getElementById("pass").value;
+        const errorMsg = document.getElementById("loginError");
+
+        if(!email || !pass) { alert("Completa los campos"); return; }
+
+        auth.signInWithEmailAndPassword(email, pass)
+            .catch((error) => {
+                console.error(error);
+                errorMsg.style.display = "block";
+                errorMsg.innerText = "Error: " + error.message;
+            });
+    }
+
+    function cerrarSesion() {
+        auth.signOut();
+    }
+
+    // --- LÓGICA DE INVENTARIO ---
 
     const TABLA_MEDIDAS = {
         "1": "9\" X 9\" X 41\" ARA", "2": "10\" X 10\" X 40\"", "3": "11\" X 11\" X 30\" FILPRO",
@@ -499,7 +515,7 @@
                     <td><strong>Caja ${item.id}</strong> <span class="info-icon" onclick="alert('Medida: ${TABLA_MEDIDAS[item.id] || 'No registrada'}')">ⓘ</span></td>
                     <td><span class="badge ${isCritical ? "critical" : "normal"}">${item.stock}</span></td>
                     <td>${item.min} / ${item.max}</td>
-                    <td>${isCritical ? `<a class="btn-req" href="mailto:${EMAIL}?subject=Requisición Caja ${item.id}">Requisición</a>` : `<span style="color:#999; font-size:0.8rem">Óptimo</span>`}</td>
+                    <td>${isCritical ? `<a class="btn-req" href="mailto:${EMAIL_REQUISICION}?subject=Requisición Caja ${item.id}">Requisición</a>` : `<span style="color:#999; font-size:0.8rem">Óptimo</span>`}</td>
                 </tr>`;
 
             if(item.id.startsWith("F")) { bodyF.innerHTML += row; } 
@@ -572,7 +588,6 @@
         doc.setFontSize(22);
         doc.setTextColor(177, 18, 38);
         doc.text("FILTROS Y SERVICIOS DE MEXICO", 14, 20);
-        
         
         doc.setFontSize(16);
         doc.setTextColor(40, 40, 40);
@@ -647,7 +662,6 @@
         doc.save(`Reporte_Filsa_${new Date().toLocaleDateString()}.pdf`);
     }
 
-    init();
 </script>
 </body>
 </html>

@@ -6,7 +6,7 @@
     <title>FILSA | Control de Inventario Seguro</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://unpkg.com/jspdf-autotable@3.5.23/dist/jspdf.plugin.autotable.js"></script>
 
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-database-compat.js"></script>
@@ -617,12 +617,9 @@
 
     document.getElementById("searchInput").addEventListener("input", render);
 
-function descargarPDF() {
+    function descargarPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        const totalCajas = inventory.length;
-        const criticas = inventory.filter(i => i.stock < i.min).length;
-        const optimas = totalCajas - criticas;
 
         doc.setFontSize(22);
         doc.setTextColor(177, 18, 38);
@@ -639,11 +636,11 @@ function descargarPDF() {
             TABLA_MEDIDAS[item.id] || "N/A",
             item.stock,
             `${item.min} / ${item.max}`,
-            item.stock < item.min ? "REQUISICIÓN" : "ÓPTIMO"
+            item.stock < item.min ? "REQUISICION" : "OPTIMO"
         ]);
 
         doc.autoTable({
-            startY: 85,
+            startY: 50,
             head: [['ID Caja', 'Medida Técnica', 'Stock', 'Mín / Máx', 'Estado']],
             body: filas,
             theme: 'striped',
@@ -655,4 +652,3 @@ function descargarPDF() {
 </script>
 </body>
 </html>
-

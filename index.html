@@ -386,7 +386,7 @@
 
                 <main>
                     <div class="section">
-                        <h3>Cajas Numéricas (1 – 43)</h3>
+                        <h3>Cajas Numéricas (1 – 42)</h3>
                         <div style="max-height:500px; overflow-y:auto;">
                             <table>
                                 <thead>
@@ -495,7 +495,7 @@
 
     function generateDefaults() {
         const temp = [];
-        for(let i=1; i<=43; i++) temp.push({ id: i.toString(), stock: 20, min: 10, max: 50 });
+        for(let i=1; i<=42; i++) temp.push({ id: i.toString(), stock: 20, min: 10, max: 50 });
         for(let i=1; i<=25; i++) temp.push({ id: `F${i}`, stock: 20, min: 10, max: 50 });
         return temp;
     }
@@ -641,3 +641,4 @@
 </script>
 </body>
 </html>
+

@@ -621,93 +621,93 @@ async function descargarPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     
-    // URL del logo (usando una versión con protocolo seguro)
-    const logoUrl = "https://www.cofisatam.com.mx/img/portfolio/filsa.jpg";
+    // Validar que existan datos antes de empezar
+    if (!inventory || inventory.length === 0) {
+        alert("Error: No hay datos de inventario disponibles. Espere a que cargue la base de datos.");
+        return;
+    }
 
     try {
-        // --- 1. INTENTO DE CARGAR EL LOGO ---
-        // Usamos un bloque interno para que si falla el logo, el PDF se genere igual
-        try {
-            const imgData = await new Promise((resolve, reject) => {
-                const img = new Image();
-                img.crossOrigin = 'anonymous'; // Intento de saltar restricción CORS
-                img.src = logoUrl;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0);
-                    resolve(canvas.toDataURL('image/jpeg'));
-                };
-                img.onerror = () => reject("Error al cargar imagen");
-                // Timeout de 2 segundos para no trabar el reporte
-                setTimeout(() => reject("Timeout logo"), 2000);
-            });
-            doc.addImage(imgData, 'JPEG', 14, 10, 45, 18);
-        } catch (logoError) {
-            console.warn("No se pudo cargar el logo, generando reporte solo con texto.");
-        }
-
-        // --- 2. ENCABEZADO PERSONALIZADO ---
-        doc.setFontSize(16);
+        // --- 1. ENCABEZADO DE TEXTO (SEGURO) ---
+        // Colocamos el texto primero para asegurar que el PDF tenga contenido si la imagen falla
+        doc.setFontSize(18);
         doc.setTextColor(177, 18, 38); // Rojo FILSA
         doc.setFont("helvetica", "bold");
-        doc.text("FILTROS Y SERVICIOS SUCURSAL DE MÉXICO", 65, 20);
+        doc.text("FILTROS Y SERVICIOS SUCURSAL DE MÉXICO", 14, 22);
 
         doc.setFontSize(12);
         doc.setTextColor(100);
         doc.setFont("helvetica", "normal");
-        doc.text("Reporte de Inventario Actualizado (Firebase)", 65, 27);
+        doc.text("Reporte de Control de Inventario", 14, 30);
 
+        // --- 2. INTENTO DE CARGAR LOGO (CON URL DE RESPALDO OMITIBLE) ---
+        // Usamos una técnica que no bloquea el hilo principal
+        const logoUrl = "https://www.cofisatam.com.mx/img/portfolio/filsa.jpg";
+        
+        try {
+            const img = new Image();
+            img.src = logoUrl;
+            // Solo intentamos dibujarlo si la imagen carga instantáneamente o está en caché
+            if (img.complete && img.naturalWidth !== 0) {
+                doc.addImage(img, 'JPEG', 150, 10, 40, 15);
+            }
+        } catch (e) {
+            console.log("Logo omitido por restricciones de seguridad");
+        }
+
+        // --- 3. DISEÑO DE PÁGINA ---
         doc.setFontSize(9);
         doc.setTextColor(40);
-        doc.text(`Generado el: ${new Date().toLocaleString()}`, 14, 42);
-        
+        doc.text(`Fecha del reporte: ${new Date().toLocaleString()}`, 14, 40);
         doc.setDrawColor(177, 18, 38);
-        doc.line(14, 45, 196, 45);
+        doc.line(14, 43, 196, 43);
 
-        // --- 3. DATOS DE LA BASE DE DATOS ---
-        // Usamos la variable 'inventory' que está vinculada a Firebase
-        const filas = inventory.map(item => [
-            `Caja ${item.id}`,
-            TABLA_MEDIDAS[item.id] || "Sin medida registrada",
-            item.stock,
-            `${item.min} / ${item.max}`,
-            item.stock < item.min ? "REQUISICIÓN" : "ÓPTIMO"
-        ]);
+        // --- 4. PREPARACIÓN DE DATOS ---
+        const filas = inventory.map(item => {
+            return [
+                `Caja ${item.id}`,
+                TABLA_MEDIDAS[item.id] || "N/A",
+                item.stock || 0,
+                `${item.min || 0} / ${item.max || 0}`,
+                (item.stock < item.min) ? "REQUISICIÓN" : "ÓPTIMO"
+            ];
+        });
 
-        // --- 4. CREACIÓN DE LA TABLA ---
+        // --- 5. GENERACIÓN DE TABLA ---
         doc.autoTable({
-            startY: 50,
+            startY: 48,
             head: [['ID Caja', 'Medida Técnica', 'Stock', 'Mín / Máx', 'Estado']],
             body: filas,
             theme: 'striped',
-            headStyles: { fillColor: [177, 18, 38], halign: 'center' },
-            styles: { fontSize: 8 },
+            headStyles: { 
+                fillColor: [177, 18, 38],
+                halign: 'center',
+                fontSize: 10
+            },
             columnStyles: {
+                0: { cellWidth: 25 },
+                1: { cellWidth: 85 },
                 2: { halign: 'center' },
                 3: { halign: 'center' },
-                4: { halign: 'center', fontStyle: 'bold' }
+                4: { halign: 'center' }
             },
             didParseCell: function(data) {
                 if (data.section === 'body' && data.column.index === 4) {
                     if (data.cell.raw === 'REQUISICIÓN') {
                         data.cell.styles.textColor = [177, 18, 38];
+                        data.cell.styles.fontStyle = 'bold';
                     }
                 }
             }
         });
 
-        // --- 5. DESCARGA ---
-        doc.save(`Reporte_Filsa_Mexico_${new Date().toLocaleDateString()}.pdf`);
+        // --- 6. FINALIZACIÓN Y DESCARGA ---
+        const nombreArchivo = `Reporte_Inventario_Mexico_${new Date().toISOString().slice(0,10)}.pdf`;
+        doc.save(nombreArchivo);
 
-    } catch (error) {
-        console.error("Error crítico:", error);
-        alert("Ocurrió un error al procesar los datos de la base de datos.");
+    } catch (err) {
+        console.error("Detalle del error:", err);
+        alert("Ocurrió un error inesperado al generar el reporte. Por favor, intente de nuevo.");
     }
 }
-</script>
-</body>
-</html>
 

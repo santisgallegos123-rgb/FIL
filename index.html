@@ -430,10 +430,7 @@
         if(e.ctrlKey && e.keyCode == 85) return false;
     };
 
-    // Anti-Debugger: pausa la ejecución si intentan inspeccionar
-    setInterval(function(){
-        debugger;
-    }, 1000);
+
 
     // --- CONFIGURACIÓN FIREBASE ---
     const firebaseConfig = {
@@ -658,3 +655,4 @@ function descargarPDF() {
 </script>
 </body>
 </html>
+

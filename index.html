@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FILSA | Control de Inventario Seguro</title>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-auth-compat.js"></script> 
@@ -330,6 +333,9 @@
         <div class="menu-search">
             <input type="text" id="searchInput" placeholder="Buscar caja...">
         </div>
+        
+        <div class="menu-item" onclick="generarReportePDF()" style="background: #1e8449;">📁 Descargar Reporte Completo</div>
+        
         <div class="menu-item" onclick="toggleHistory()"> Ver Historial Reciente</div>
         
         <div id="historyContainer" style="display:none">
@@ -429,38 +435,7 @@
     let inventory = [];
     const EMAIL_REQUISICION = "almacenfilsa@gmail.com";
 
-    // --- LÓGICA DE AUTENTICACIÓN ---
-    
-    window.onload = () => {
-        auth.signOut();
-    };
-
-    auth.onAuthStateChanged((user) => {
-        if (user) {
-            document.getElementById("loginWrapper").style.display = "none";
-            document.getElementById("mainApp").style.display = "block";
-            init(); 
-        } else {
-            document.getElementById("loginWrapper").style.display = "flex";
-            document.getElementById("mainApp").style.display = "none";
-        }
-    });
-
-    function validarLogin() {
-        const email = document.getElementById("user").value;
-        const pass = document.getElementById("pass").value;
-        const errorMsg = document.getElementById("loginError");
-        if(!email || !pass) { alert("Completa los campos"); return; }
-        auth.signInWithEmailAndPassword(email, pass).catch((error) => {
-            errorMsg.style.display = "block";
-            errorMsg.innerText = "Error: Credenciales inválidas";
-        });
-    }
-
-    function cerrarSesion() { auth.signOut(); }
-
-    // --- LÓGICA DE INVENTARIO ---
-
+    // --- TABLA DE MEDIDAS ---
     const TABLA_MEDIDAS = {
         "1": "9\" X 9\" X 41\" ARA", "2": "10\" X 10\" X 40\"", "3": "11\" X 11\" X 30\" FILPRO",
         "4": "11\" X 11\" X 45\"", "5": "11\" X 11\" X 40\"", "6": "13\" X 13\" X 40\"",
@@ -488,6 +463,62 @@
         "F23": "18\" X 18\" X 13\"", "F24": "24 1/2\" X 24 1/2\" X 9 1/2\"", "F25": "6 1/4\" X 6 1/4\" X 23 1/2\" LTC-200"
     };
 
+    // --- LÓGICA DE PDF DESDE CERO ---
+    function generarReportePDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // Estilos de cabecera
+        doc.setFillColor(177, 18, 38); // Rojo Filsa
+        doc.rect(0, 0, 210, 40, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.text("FILTROS Y SERVICIOS DE MEXICO", 14, 20);
+        
+        doc.setFontSize(12);
+        doc.text("Control de Inventario - Reporte de Existencias", 14, 30);
+        doc.text(`Fecha: ${new Date().toLocaleString()}`, 140, 30);
+
+        // Preparar Datos de la Tabla
+        const tableBody = inventory.map(item => {
+            const estado = item.stock < item.min ? "REQUISICION" : "OPTIMO";
+            return [
+                `Caja ${item.id}`,
+                TABLA_MEDIDAS[item.id] || "No especificada",
+                item.stock,
+                `${item.min} / ${item.max}`,
+                estado
+            ];
+        });
+
+        // Generar Tabla Automática
+        doc.autoTable({
+            startY: 45,
+            head: [['ID Caja', 'Medida Técnica', 'Stock Actual', 'Mín / Máx', 'Estado']],
+            body: tableBody,
+            headStyles: { fillColor: [143, 14, 31], textColor: [255, 255, 255], fontStyle: 'bold' },
+            alternateRowStyles: { fillColor: [245, 245, 245] },
+            margin: { top: 45 },
+            didParseCell: function(data) {
+                // Pintar de rojo el texto si es REQUISICION
+                if (data.section === 'body' && data.column.index === 4) {
+                    if (data.cell.raw === 'REQUISICION') {
+                        data.cell.styles.textColor = [177, 18, 38];
+                        data.cell.styles.fontStyle = 'bold';
+                    } else {
+                        data.cell.styles.textColor = [30, 132, 73];
+                    }
+                }
+            }
+        });
+
+        // Guardar archivo
+        const nombreArchivo = `Reporte_Inventario_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`;
+        doc.save(nombreArchivo);
+    }
+
+    // --- RESTO DE LÓGICA (FIREBASE, RENDER, ETC) ---
     function generateDefaults() {
         const temp = [];
         for(let i=1; i<=43; i++) temp.push({ id: i.toString(), stock: 20, min: 10, max: 50 });
@@ -534,9 +565,7 @@
     function updateBoxOptions(mode) {
         const type = mode === 'Salida' ? document.getElementById("typeSelectSalida").value : document.getElementById("typeSelectEntrada").value;
         const select = mode === 'Salida' ? document.getElementById("boxSelect") : document.getElementById("boxSelectAdd");
-        
         select.innerHTML = "";
-        
         inventory.forEach((item, index) => {
             const isF = item.id.startsWith("F");
             if ((type === "SERIEF" && isF) || (type === "NUM" && !isF)) {
@@ -553,10 +582,8 @@
         const qty = parseInt(document.getElementById("qtyInput").value);
         const ref = document.getElementById("inputReferencia").value.trim();
         const item = inventory[index];
-
         if (!item || isNaN(qty) || qty <= 0 || !ref) { alert("Complete todos los campos."); return; }
         if (qty > item.stock) { alert("Stock insuficiente."); return; }
-
         if(confirm(`¿Registrar salida de ${qty} piezas de la Caja ${item.id}?`)) {
             db.ref(`inventario/${index}`).update({ stock: item.stock - qty });
             db.ref('historial').push({ id: item.id, qty: `-${qty}`, ref: ref, time: new Date().toLocaleString() });
@@ -568,9 +595,7 @@
         const index = document.getElementById("boxSelectAdd").value;
         const qty = parseInt(document.getElementById("qtyAddInput").value);
         const item = inventory[index];
-
         if (!item || isNaN(qty) || qty <= 0) { alert("Cantidad no válida."); return; }
-
         if(confirm(`¿Confirmar entrada de ${qty} piezas a la Caja ${item.id}?`)) {
             db.ref(`inventario/${index}`).update({ stock: item.stock + qty });
             db.ref('historial').push({ id: item.id, qty: `+${qty}`, ref: "Entrada Stock", time: new Date().toLocaleString() });
@@ -594,8 +619,30 @@
         h.style.display = h.style.display === "none" ? "block" : "none";
     }
 
-    document.getElementById("searchInput").addEventListener("input", render);
+    function cerrarSesion() { auth.signOut(); }
 
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            document.getElementById("loginWrapper").style.display = "none";
+            document.getElementById("mainApp").style.display = "block";
+            init(); 
+        } else {
+            document.getElementById("loginWrapper").style.display = "flex";
+            document.getElementById("mainApp").style.display = "none";
+        }
+    });
+
+    function validarLogin() {
+        const email = document.getElementById("user").value;
+        const pass = document.getElementById("pass").value;
+        const errorMsg = document.getElementById("loginError");
+        auth.signInWithEmailAndPassword(email, pass).catch(() => {
+            errorMsg.style.display = "block";
+        });
+    }
+
+    document.getElementById("searchInput").addEventListener("input", render);
+    window.onload = () => { auth.signOut(); };
 </script>
 </body>
 </html>

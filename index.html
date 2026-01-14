@@ -6,7 +6,7 @@
     <title>FILSA | Control de Inventario Seguro</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
 
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-database-compat.js"></script>
@@ -416,247 +416,285 @@
         </div>
     </div>
 </div>
-
 <script>
-    /**
-     * BLOQUEO DE SEGURIDAD (ANTICOPIA)
-     */
-    document.onkeydown = function(e) {
-        // Bloquear F12
-        if(e.keyCode == 123) return false;
-        // Bloquear Ctrl+Shift+I, J, C
-        if(e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) return false;
-        // Bloquear Ctrl+U (Ver código)
-        if(e.ctrlKey && e.keyCode == 85) return false;
-    };
+/**
+ * BLOQUEO DE SEGURIDAD (ANTICOPIA)
+ */
+document.onkeydown = function(e) {
+    if(e.keyCode == 123) return false;
+    if(e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74 || e.keyCode == 67)) return false;
+    if(e.ctrlKey && e.keyCode == 85) return false;
+};
 
-    // Anti-Debugger: pausa la ejecución si intentan inspeccionar
-    setInterval(function(){
-        debugger;
-    }, 1000);
+// --- CONFIGURACIÓN FIREBASE ---
+const firebaseConfig = {
+    apiKey: "AIzaSyB8wVMIhqa9OAFJCt3bzqouip2ICtqJkNQ",
+    authDomain: "almacen-cajas-filsa.firebaseapp.com",
+    databaseURL: "https://almacen-cajas-filsa-default-rtdb.firebaseio.com",
+    projectId: "almacen-cajas-filsa",
+    storageBucket: "almacen-cajas-filsa.firebasestorage.app",
+    messagingSenderId: "1027121761492",
+    appId: "1:1027121761492:web:6d892a43ade34e4117bf41"
+};
 
-    // --- CONFIGURACIÓN FIREBASE ---
-    const firebaseConfig = {
-        apiKey: "AIzaSyB8wVMIhqa9OAFJCt3bzqouip2ICtqJkNQ",
-        authDomain: "almacen-cajas-filsa.firebaseapp.com",
-        databaseURL: "https://almacen-cajas-filsa-default-rtdb.firebaseio.com",
-        projectId: "almacen-cajas-filsa",
-        storageBucket: "almacen-cajas-filsa.firebasestorage.app",
-        messagingSenderId: "1027121761492",
-        appId: "1:1027121761492:web:6d892a43ade34e4117bf41"
-    };
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const auth = firebase.auth();
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const auth = firebase.auth();
+let inventory = [];
+const EMAIL_REQUISICION = "almacenfilsa@gmail.com";
 
-    let inventory = [];
-    const EMAIL_REQUISICION = "almacenfilsa@gmail.com";
+// --- TABLA DE MEDIDAS ---
+const TABLA_MEDIDAS = {
+    "1": "9\" X 9\" X 41\" ARA", "2": "10\" X 10\" X 40\"", "3": "11\" X 11\" X 30\" FILPRO",
+    "4": "11\" X 11\" X 45\"", "5": "11\" X 11\" X 40\"", "6": "13\" X 13\" X 40\"",
+    "7": "13 1/2\" X 13 1/2\" X 37\" LTC", "8": "12\" X 12\" X 40\"", "9": "25 1/2\" X 20\" X 15\"",
+    "10": "24\" X 24\" X 12\"", "11": "13\" X 13\" X 27\" ELAS 12 3/4\"", "12": "26\" X 26\" X 15\"",
+    "13": "19\" X 19\" X 50\"", "14": "18\" X 18\" X 50\"", "15": "14 1/2\" X 14 1/2\" X 26 1/2\"",
+    "16": "14 1/2\" X 14 1/2\" X 24 1/2\" EXME", "17": "14 1/2\" X 14 1/2\" X 37\"", "18": "14\" X 14\" X 27\" ELAS 13 3/4\"",
+    "19": "16 1/2\" X 16 1/2\" X 19\" TUFLEX", "20": "16\" X 16\" X 40\" MONTERREY", "21": "20\" X 20\" X 15\"",
+    "22": "15\" X 15\" X 26\"", "23": "3\" X 3\" X 30\"", "24": "3\" X 3\" X 31\"",
+    "25": "3 1/2\" X 3 1/2\" X 37\"", "26": "3\" X 3\" X 40\"", "27": "4\" X 4\" X 50\"",
+    "28": "4 1/2\" X 4 1/2\" X 40\"", "29": "5 1/2\" X 5 1/2\" X 17 1/2\" IEFSA", "30": "5 1/2\" X 5 1/2\" X 25 1/2\" FILPRO",
+    "31": "6\" X 6\" X 39\"", "32": "6\" X 6\" X 20\"", "33": "6 1/2\" X 6 1/2\" X 40\"",
+    "34": "6 1/2\" X 6 1/2\" X 43 1/2\"", "35": "7\" X 7\" X 37\"", "36": "7\" X 7\" X 43\"",
+    "37": "7 1/2\" X 7 1/2\" X 21 1/4\"", "38": "7 1/2\" X 7 1/2\" X 22 3/4\"", "39": "7 1/2\" X 7 1/2\" X 32\"",
+    "40": "7 1/2\" X 7 1/2\" X 41 1/2\"", "41": "7 1/2\" X 7 1/2\" X 43\"", "42": "8\" X 8\" X 40\"",
+    "F1": "19 1/4\" X 13\" X 43 1/2\" GIV-001", "F2": "19 1/4\" X 13\" X 29 1/2\" GIV-002",
+    "F3": "16\" X 16\" X 30\" MONTERREY 2", "F4": "13 3/4\" X 13 3/4\" X 46 1/2\" FILPRO",
+    "F5": "16 3/4\" X 16 3/4\" X 2 1/2\" FILPRO REFORZADA", "F6": "22 1/4\" X 18\" X 2 1/4\" KIMBERLY",
+    "F7": "14 1/2\" X 14 1/2\" X 74 1/2\"", "F8": "14\" X 14\" X 60\"", "F9": "9\" X 9\" X 80\"",
+    "F10": "7 1/2\" X 7 1/2\" X 80\"", "F11": "6 1/2\" X 6 1/2\" X 70\"", "F12": "6\" X 6\" X 59 1/2\"",
+    "F13": "6\" X 6\" X 58\"", "F14": "14 1/2\" X 7 1/4\" X 35\" LTC-188", "F15": "14 1/2\" X 14 1/2\" X 35\" LTC-188",
+    "F16": "6 3/4\" X 6 3/4\" X 34 1/2\" LTC-188", "F17": "6 3/4\" X 13\" X 37\" LTC-199",
+    "F18": "6 3/4\" X 6 3/4\" X 36 1/2\" LTC-199", "F19": "24\" X 24\" X 13 1/2\" IEFSA",
+    "F20": "20\" X 20\" X 21 1/4\" PROP", "F21": "24\" X 24\" X 21 1/4\" PROP", "F22": "14\" X 14\" X 16\"",
+    "F23": "18\" X 18\" X 13\"", "F24": "24 1/2\" X 24 1/2\" X 9 1/2\"", "F25": "6 1/4\" X 6 1/4\" X 23 1/2\" LTC-200"
+};
 
-    // --- LÓGICA DE AUTENTICACIÓN ---
+// --- LÓGICA DE AUTENTICACIÓN 
+
+// Forzamos el cierre de sesión cada vez que la página se carga/refresca
+auth.signOut().then(() => {
+    // Configuramos para que la sesión no se guarde en el disco local
+    return auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+});
+
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        document.getElementById("loginWrapper").style.display = "none";
+        document.getElementById("mainApp").style.display = "block";
+        init(); 
+    } else {
+        document.getElementById("loginWrapper").style.display = "flex";
+        document.getElementById("mainApp").style.display = "none";
+        // Limpiamos los campos por seguridad
+        document.getElementById("pass").value = "";
+    }
+});
+
+function validarLogin() {
+    const email = document.getElementById("user").value;
+    const pass = document.getElementById("pass").value;
+    const errorMsg = document.getElementById("loginError");
     
-    window.onload = () => {
-        auth.signOut();
-    };
+    if(!email || !pass) { 
+        alert("Completa los campos"); 
+        return; 
+    }
 
-    auth.onAuthStateChanged((user) => {
-        if (user) {
-            document.getElementById("loginWrapper").style.display = "none";
-            document.getElementById("mainApp").style.display = "block";
-            init(); 
+    errorMsg.style.display = "none";
+
+    auth.signInWithEmailAndPassword(email, pass).catch((error) => {
+        errorMsg.style.display = "block";
+        errorMsg.innerText = "Error: Credenciales inválidas o acceso denegado";
+    });
+}
+
+function cerrarSesion() { auth.signOut(); }
+
+// --- LÓGICA DE INVENTARIO ---
+
+function generateDefaults() {
+    const temp = [];
+    for(let i=1; i<=42; i++) temp.push({ id: i.toString(), stock: 0, min: 10, max: 50 });
+    for(let i=1; i<=25; i++) temp.push({ id: `F${i}`, stock: 0, min: 10, max: 50 });
+    return temp;
+}
+
+function init() {
+    // Escuchar cambios en el inventario
+    db.ref('inventario').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            inventory = data;
         } else {
-            document.getElementById("loginWrapper").style.display = "flex";
-            document.getElementById("mainApp").style.display = "none";
+            // Si no hay datos, inicializar base de datos
+            inventory = generateDefaults();
+            db.ref('inventario').set(inventory);
         }
+        render();
+        updateBoxOptions('Salida');
+        updateBoxOptions('Entrada');
     });
 
-    function validarLogin() {
-        const email = document.getElementById("user").value;
-        const pass = document.getElementById("pass").value;
-        const errorMsg = document.getElementById("loginError");
-        if(!email || !pass) { alert("Completa los campos"); return; }
-        auth.signInWithEmailAndPassword(email, pass).catch((error) => {
-            errorMsg.style.display = "block";
-            errorMsg.innerText = "Error: Credenciales inválidas";
-        });
-    }
+    // Escuchar historial
+    db.ref('historial').limitToLast(20).on('value', (snapshot) => { 
+        renderHistory(snapshot.val()); 
+    });
+}
 
-    function cerrarSesion() { auth.signOut(); }
+function render() {
+    const bodyNum = document.getElementById("bodyNum");
+    const bodyF = document.getElementById("bodyF");
+    const filter = document.getElementById("searchInput").value.toLowerCase();
 
-    // --- LÓGICA DE INVENTARIO ---
+    bodyNum.innerHTML = ""; bodyF.innerHTML = "";
 
-    const TABLA_MEDIDAS = {
-        "1": "9\" X 9\" X 41\" ARA", "2": "10\" X 10\" X 40\"", "3": "11\" X 11\" X 30\" FILPRO",
-        "4": "11\" X 11\" X 45\"", "5": "11\" X 11\" X 40\"", "6": "13\" X 13\" X 40\"",
-        "7": "13 1/2\" X 13 1/2\" X 37\" LTC", "8": "12\" X 12\" X 40\"", "9": "25 1/2\" X 20\" X 15\"",
-        "10": "24\" X 24\" X 12\"", "11": "13\" X 13\" X 27\" ELAS 12 3/4\"", "12": "26\" X 26\" X 15\"",
-        "13": "19\" X 19\" X 50\"", "14": "18\" X 18\" X 50\"", "15": "14 1/2\" X 14 1/2\" X 26 1/2\"",
-        "16": "14 1/2\" X 14 1/2\" X 24 1/2\" EXME", "17": "14 1/2\" X 14 1/2\" X 37\"", "18": "14\" X 14\" X 27\" ELAS 13 3/4\"",
-        "19": "16 1/2\" X 16 1/2\" X 19\" TUFLEX", "20": "16\" X 16\" X 40\" MONTERREY", "21": "20\" X 20\" X 15\"",
-        "22": "15\" X 15\" X 26\"", "23": "3\" X 3\" X 30\"", "24": "3\" X 3\" X 31\"",
-        "25": "3 1/2\" X 3 1/2\" X 37\"", "26": "3\" X 3\" X 40\"", "27": "4\" X 4\" X 50\"",
-        "28": "4 1/2\" X 4 1/2\" X 40\"", "29": "5 1/2\" X 5 1/2\" X 17 1/2\" IEFSA", "30": "5 1/2\" X 5 1/2\" X 25 1/2\" FILPRO",
-        "31": "6\" X 6\" X 39\"", "32": "6\" X 6\" X 20\"", "33": "6 1/2\" X 6 1/2\" X 40\"",
-        "34": "6 1/2\" X 6 1/2\" X 43 1/2\"", "35": "7\" X 7\" X 37\"", "36": "7\" X 7\" X 43\"",
-        "37": "7 1/2\" X 7 1/2\" X 21 1/4\"", "38": "7 1/2\" X 7 1/2\" X 22 3/4\"", "39": "7 1/2\" X 7 1/2\" X 32\"",
-        "40": "7 1/2\" X 7 1/2\" X 41 1/2\"", "41": "7 1/2\" X 7 1/2\" X 43\"", "42": "8\" X 8\" X 40\"",
-        "F1": "19 1/4\" X 13\" X 43 1/2\" GIV-001", "F2": "19 1/4\" X 13\" X 29 1/2\" GIV-002",
-        "F3": "16\" X 16\" X 30\" MONTERREY 2", "F4": "13 3/4\" X 13 3/4\" X 46 1/2\" FILPRO",
-        "F5": "16 3/4\" X 16 3/4\" X 2 1/2\" FILPRO REFORZADA", "F6": "22 1/4\" X 18\" X 2 1/4\" KIMBERLY",
-        "F7": "14 1/2\" X 14 1/2\" X 74 1/2\"", "F8": "14\" X 14\" X 60\"", "F9": "9\" X 9\" X 80\"",
-        "F10": "7 1/2\" X 7 1/2\" X 80\"", "F11": "6 1/2\" X 6 1/2\" X 70\"", "F12": "6\" X 6\" X 59 1/2\"",
-        "F13": "6\" X 6\" X 58\"", "F14": "14 1/2\" X 7 1/4\" X 35\" LTC-188", "F15": "14 1/2\" X 14 1/2\" X 35\" LTC-188",
-        "F16": "6 3/4\" X 6 3/4\" X 34 1/2\" LTC-188", "F17": "6 3/4\" X 13\" X 37\" LTC-199",
-        "F18": "6 3/4\" X 6 3/4\" X 36 1/2\" LTC-199", "F19": "24\" X 24\" X 13 1/2\" IEFSA",
-        "F20": "20\" X 20\" X 21 1/4\" PROP", "F21": "24\" X 24\" X 21 1/4\" PROP", "F22": "14\" X 14\" X 16\"",
-        "F23": "18\" X 18\" X 13\"", "F24": "24 1/2\" X 24 1/2\" X 9 1/2\"", "F25": "6 1/4\" X 6 1/4\" X 23 1/2\" LTC-200"
-    };
-
-    function generateDefaults() {
-        const temp = [];
-        for(let i=1; i<=42; i++) temp.push({ id: i.toString(), stock: 20, min: 10, max: 50 });
-        for(let i=1; i<=25; i++) temp.push({ id: `F${i}`, stock: 20, min: 10, max: 50 });
-        return temp;
-    }
-
-    function init() {
-        db.ref('inventario').on('value', (snapshot) => {
-            const data = snapshot.val();
-            inventory = data || generateDefaults();
-            if (!data) db.ref('inventario').set(inventory);
-            render();
-            updateBoxOptions('Salida');
-            updateBoxOptions('Entrada');
-        });
-        db.ref('historial').limitToLast(20).on('value', (snapshot) => { 
-            renderHistory(snapshot.val()); 
-        });
-    }
-
-    function render() {
-        const bodyNum = document.getElementById("bodyNum");
-        const bodyF = document.getElementById("bodyF");
-        const filter = document.getElementById("searchInput").value.toLowerCase();
-
-        bodyNum.innerHTML = ""; bodyF.innerHTML = "";
-
-        inventory.forEach((item) => {
-            if(filter && !item.id.toLowerCase().includes(filter)) return;
-            const isCritical = item.stock < item.min;
-            const row = `
-                <tr>
-                    <td><strong>Caja ${item.id}</strong> <span class="info-icon" onclick="alert('Medida: ${TABLA_MEDIDAS[item.id] || 'No registrada'}')">ⓘ</span></td>
-                    <td><span class="badge ${isCritical ? "critical" : "normal"}">${item.stock}</span></td>
-                    <td>${item.min} / ${item.max}</td>
-                    <td>${isCritical ? `<a class="btn-req" href="mailto:${EMAIL_REQUISICION}?subject=Requisición Caja ${item.id}">Requisición</a>` : `<span style="color:#999; font-size:0.8rem">Óptimo</span>`}</td>
-                </tr>`;
-            if(item.id.startsWith("F")) { bodyF.innerHTML += row; } 
-            else { bodyNum.innerHTML += row; }
-        });
-    }
-
-    function updateBoxOptions(mode) {
-        const type = mode === 'Salida' ? document.getElementById("typeSelectSalida").value : document.getElementById("typeSelectEntrada").value;
-        const select = mode === 'Salida' ? document.getElementById("boxSelect") : document.getElementById("boxSelectAdd");
+    inventory.forEach((item) => {
+        if(filter && !item.id.toLowerCase().includes(filter)) return;
         
-        select.innerHTML = "";
+        const isCritical = item.stock < item.min;
         
-        inventory.forEach((item, index) => {
-            const isF = item.id.startsWith("F");
-            if ((type === "SERIEF" && isF) || (type === "NUM" && !isF)) {
-                const opt = document.createElement("option");
-                opt.value = index;
-                opt.textContent = `Caja ${item.id}`;
-                select.appendChild(opt);
-            }
-        });
-    }
-
-    function procesarSalida() {
-        const index = document.getElementById("boxSelect").value;
-        const qty = parseInt(document.getElementById("qtyInput").value);
-        const ref = document.getElementById("inputReferencia").value.trim();
-        const item = inventory[index];
-
-        if (!item || isNaN(qty) || qty <= 0 || !ref) { alert("Complete todos los campos."); return; }
-        if (qty > item.stock) { alert("Stock insuficiente."); return; }
-
-        if(confirm(`¿Registrar salida de ${qty} piezas de la Caja ${item.id}?`)) {
-            db.ref(`inventario/${index}`).update({ stock: item.stock - qty });
-            db.ref('historial').push({ id: item.id, qty: `-${qty}`, ref: ref, time: new Date().toLocaleString() });
-            document.getElementById("inputReferencia").value = "";
+        // AQUÍ ESTÁ EL CAMBIO: Se usa mostrarInfoCaja('${item.id}')
+        const row = `
+            <tr>
+                <td>
+                    <strong>Caja ${item.id}</strong> 
+                    <span class="info-icon" onclick="mostrarInfoCaja('${item.id}')" style="cursor:pointer; margin-left:8px; color:#b11226; font-size:1.2rem;">ⓘ</span>
+                </td>
+                <td><span class="badge ${isCritical ? "critical" : "normal"}">${item.stock}</span></td>
+                <td>${item.min} / ${item.max}</td>
+                <td>${isCritical ? `<a class="btn-req" href="mailto:${EMAIL_REQUISICION}?subject=Requisición Caja ${item.id}&body=Se requiere stock para la caja ${item.id}.">Requisición</a>` : `<span style="color:#999; font-size:0.8rem">Óptimo</span>`}</td>
+            </tr>`;
+            
+        if(item.id.startsWith("F")) { bodyF.innerHTML += row; } 
+        else { bodyNum.innerHTML += row; }
+    });
+}
+function updateBoxOptions(mode) {
+    const type = mode === 'Salida' ? document.getElementById("typeSelectSalida").value : document.getElementById("typeSelectEntrada").value;
+    const select = mode === 'Salida' ? document.getElementById("boxSelect") : document.getElementById("boxSelectAdd");
+    
+    select.innerHTML = "";
+    
+    inventory.forEach((item, index) => {
+        const isF = item.id.startsWith("F");
+        if ((type === "SERIEF" && isF) || (type === "NUM" && !isF)) {
+            const opt = document.createElement("option");
+            opt.value = index;
+            opt.textContent = `Caja ${item.id}`;
+            select.appendChild(opt);
         }
+    });
+}
+
+function procesarSalida() {
+    const index = document.getElementById("boxSelect").value;
+    const qty = parseInt(document.getElementById("qtyInput").value);
+    const ref = document.getElementById("inputReferencia").value.trim();
+    const item = inventory[index];
+
+    if (!item || isNaN(qty) || qty <= 0 || !ref) { alert("Complete todos los campos."); return; }
+    if (qty > item.stock) { alert("Stock insuficiente en sistema."); return; }
+
+    if(confirm(`¿Registrar salida de ${qty} piezas de la Caja ${item.id}?`)) {
+        db.ref(`inventario/${index}`).update({ stock: item.stock - qty });
+        db.ref('historial').push({ id: item.id, qty: `-${qty}`, ref: ref, time: new Date().toLocaleString() });
+        document.getElementById("inputReferencia").value = "";
     }
+}
 
-    function procesarEntrada() {
-        const index = document.getElementById("boxSelectAdd").value;
-        const qty = parseInt(document.getElementById("qtyAddInput").value);
-        const item = inventory[index];
+function procesarEntrada() {
+    const index = document.getElementById("boxSelectAdd").value;
+    const qty = parseInt(document.getElementById("qtyAddInput").value);
+    const item = inventory[index];
 
-        if (!item || isNaN(qty) || qty <= 0) { alert("Cantidad no válida."); return; }
+    if (!item || isNaN(qty) || qty <= 0) { alert("Cantidad no válida."); return; }
 
-        if(confirm(`¿Confirmar entrada de ${qty} piezas a la Caja ${item.id}?`)) {
-            db.ref(`inventario/${index}`).update({ stock: item.stock + qty });
-            db.ref('historial').push({ id: item.id, qty: `+${qty}`, ref: "Entrada Stock", time: new Date().toLocaleString() });
-        }
+    if(confirm(`¿Confirmar entrada de ${qty} piezas a la Caja ${item.id}?`)) {
+        db.ref(`inventario/${index}`).update({ stock: item.stock + qty });
+        db.ref('historial').push({ id: item.id, qty: `+${qty}`, ref: "Entrada Stock", time: new Date().toLocaleString() });
     }
+}
 
-    function renderHistory(histData) {
-        const list = document.getElementById("historyList");
-        if (!histData) { list.innerHTML = "Sin movimientos"; return; }
-        const items = Object.values(histData).reverse();
-        list.innerHTML = items.map(h => `<div class="history-item"><strong>Caja ${h.id}</strong> | ${h.qty} pzs<br><small>${h.time} - Ref: ${h.ref}</small></div>`).join("");
-    }
+function renderHistory(histData) {
+    const list = document.getElementById("historyList");
+    if (!histData) { list.innerHTML = "Sin movimientos"; return; }
+    const items = Object.values(histData).reverse();
+    list.innerHTML = items.map(h => `<div class="history-item"><strong>Caja ${h.id}</strong> | ${h.qty} pzs<br><small>${h.time} - Ref: ${h.ref}</small></div>`).join("");
+}
 
-    function toggleMenu() {
-        document.getElementById("menuPanel").classList.toggle("active");
-        document.getElementById("appWrapper").classList.toggle("compressed");
-    }
+function toggleMenu() {
+    document.getElementById("menuPanel").classList.toggle("active");
+    document.getElementById("appWrapper").classList.toggle("compressed");
+}
 
-    function toggleHistory() {
-        const h = document.getElementById("historyContainer");
-        h.style.display = h.style.display === "none" ? "block" : "none";
-    }
+function toggleHistory() {
+    const h = document.getElementById("historyContainer");
+    h.style.display = h.style.display === "none" ? "block" : "none";
+}
 
-    document.getElementById("searchInput").addEventListener("input", render);
+document.getElementById("searchInput").addEventListener("input", render);
 
 function descargarPDF() {
+    try {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        const totalCajas = inventory.length;
-        const criticas = inventory.filter(i => i.stock < i.min).length;
-        const optimas = totalCajas - criticas;
-
-        doc.setFontSize(22);
+        
+        // 1. Encabezado del PDF
+        doc.setFontSize(18);
         doc.setTextColor(177, 18, 38);
-        doc.text("FILTROS Y SERVICIOS DE MEXICO", 14, 20);
-        doc.setFontSize(16);
-        doc.setTextColor(40, 40, 40);
-        doc.text("Reporte de Inventario de Cajas", 14, 30);
+        doc.text("FILSA - Reporte de Inventario", 14, 20);
+        
         doc.setFontSize(10);
-        doc.text(`Fecha: ${new Date().toLocaleString()}`, 14, 38);
-        doc.line(14, 42, 196, 42);
+        doc.setTextColor(100);
+        doc.text(`Fecha: ${new Date().toLocaleString()}`, 14, 28);
 
-        const filas = inventory.map(item => [
-            `Caja ${item.id}`,
-            TABLA_MEDIDAS[item.id] || "N/A",
-            item.stock,
-            `${item.min} / ${item.max}`,
-            item.stock < item.min ? "REQUISICIÓN" : "ÓPTIMO"
-        ]);
+        // 2. Limpieza de datos (ELIMINA EL ERROR DE 'CELLS')
+        // Filtramos solo items que existan y convertimos todo a String
+        const filasValidas = inventory
+            .filter(item => item && item.id !== undefined) 
+            .map(item => {
+                return [
+                    String(item.id),                       // ID de caja
+                    String(TABLA_MEDIDAS[item.id] || "N/A"), // Medida
+                    String(item.stock || "0"),             // Stock
+                    item.stock < item.min ? "REQUISICION" : "OPTIMO" // Estado
+                ];
+            });
 
+        // 3. Generación de la tabla
         doc.autoTable({
-            startY: 85,
-            head: [['ID Caja', 'Medida Técnica', 'Stock', 'Mín / Máx', 'Estado']],
-            body: filas,
-            theme: 'striped',
-            headStyles: { fillColor: [177, 18, 38] }
+            startY: 35,
+            head: [['Caja', 'Medida', 'Stock', 'Estado']],
+            body: filasValidas,
+            headStyles: { fillColor: [177, 18, 38] },
+            styles: { fontSize: 9, cellPadding: 3 },
+            // Esto asegura que si algo falla internamente, no rompa el PDF
+            didParseCell: function(data) {
+                if (data.section === 'body' && data.column.index === 3) {
+                    if (data.cell.raw === "REQUISICION") {
+                        data.cell.styles.textColor = [177, 18, 38];
+                    }
+                }
+            }
         });
 
-        doc.save(`Reporte_Filsa_${new Date().toLocaleDateString()}.pdf`);
+        // 4. Descarga del archivo
+        doc.save(`Reporte_Inventario_Filsa.pdf`);
+
+    } catch (error) {
+        console.error("Error detallado:", error);
+        alert("Error al generar el PDF. Verifica que el inventario no esté vacío.");
     }
+}
+// Agrega esto al final de tu <script>
+function mostrarInfoCaja(idCaja) {
+    const medida = TABLA_MEDIDAS[idCaja] || 'Medida no registrada';
+    alert("DETALLES DE CAJA\n--------------------------\nID: " + idCaja + "\nMedida: " + medida);
+}
 </script>
-</body>
 </html>
 
 

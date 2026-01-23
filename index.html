@@ -516,10 +516,80 @@ function cerrarSesion() { auth.signOut(); }
 // --- LÓGICA DE INVENTARIO ---
 
 function generateDefaults() {
-    const temp = [];
-    for(let i=1; i<=42; i++) temp.push({ id: i.toString(), stock: 0, min: 10, max: 50 });
-    for(let i=1; i<=25; i++) temp.push({ id: `F${i}`, stock: 0, min: 10, max: 50 });
-    return temp;
+    const dataRecovered = [
+        // Cajas Numéricas (Páginas 1 y 2)
+        { id: "1", stock: 51, min: 20, max: 40 },
+        { id: "2", stock: 38, min: 10, max: 40 },
+        { id: "3", stock: 14, min: 20, max: 50 },
+        { id: "4", stock: 19, min: 10, max: 40 },
+        { id: "5", stock: 17, min: 10, max: 40 },
+        { id: "6", stock: 14, min: 10, max: 50 },
+        { id: "7", stock: 18, min: 10, max: 30 },
+        { id: "8", stock: 30, min: 10, max: 40 },
+        { id: "9", stock: 65, min: 10, max: 50 },
+        { id: "10", stock: 52, min: 10, max: 50 },
+        { id: "11", stock: 45, min: 20, max: 50 },
+        { id: "12", stock: 35, min: 10, max: 50 },
+        { id: "13", stock: 48, min: 10, max: 40 },
+        { id: "14", stock: 22, min: 10, max: 40 },
+        { id: "15", stock: 40, min: 20, max: 50 },
+        { id: "16", stock: 22, min: 20, max: 50 },
+        { id: "17", stock: 18, min: 20, max: 50 },
+        { id: "18", stock: 65, min: 20, max: 50 },
+        { id: "19", stock: 45, min: 15, max: 40 },
+        { id: "20", stock: 35, min: 10, max: 50 },
+        { id: "21", stock: 52, min: 10, max: 50 },
+        { id: "22", stock: 45, min: 10, max: 40 },
+        { id: "23", stock: 40, min: 10, max: 50 },
+        { id: "24", stock: 27, min: 10, max: 50 },
+        { id: "25", stock: 14, min: 5, max: 50 },
+        { id: "26", stock: 30, min: 5, max: 50 },
+        { id: "27", stock: 1, min: 5, max: 30 },
+        { id: "28", stock: 22, min: 5, max: 50 },
+        { id: "29", stock: 48, min: 20, max: 50 },
+        { id: "30", stock: 39, min: 20, max: 50 },
+        { id: "31", stock: 29, min: 10, max: 50 },
+        { id: "32", stock: 51, min: 20, max: 50 },
+        { id: "33", stock: 22, min: 10, max: 50 },
+        { id: "34", stock: 45, min: 10, max: 50 },
+        { id: "35", stock: 10, min: 10, max: 50 },
+        { id: "36", stock: 35, min: 10, max: 50 },
+        { id: "37", stock: 45, min: 15, max: 40 },
+        { id: "38", stock: 60, min: 15, max: 40 },
+        { id: "39", stock: 23, min: 15, max: 40 },
+        { id: "40", stock: 18, min: 15, max: 40 },
+        { id: "41", stock: 25, min: 15, max: 40 },
+        { id: "42", stock: 36, min: 15, max: 40 },
+        { id: "43", stock: 22, min: 15, max: 30 },
+
+        // Serie F (Páginas 2 y 3)
+        { id: "F1", stock: 45, min: 10, max: 30 },
+        { id: "F2", stock: 30, min: 10, max: 30 },
+        { id: "F3", stock: 10, min: 10, max: 20 },
+        { id: "F4", stock: 24, min: 5, max: 20 },
+        { id: "F5", stock: 36, min: 10, max: 30 },
+        { id: "F6", stock: 52, min: 10, max: 30 },
+        { id: "F7", stock: 45, min: 15, max: 25 },
+        { id: "F8", stock: 36, min: 15, max: 25 },
+        { id: "F9", stock: 42, min: 15, max: 25 },
+        { id: "F10", stock: 38, min: 15, max: 25 },
+        { id: "F11", stock: 15, min: 15, max: 25 },
+        { id: "F12", stock: 22, min: 10, max: 25 },
+        { id: "F13", stock: 26, min: 10, max: 25 },
+        { id: "F14", stock: 45, min: 20, max: 40 },
+        { id: "F15", stock: 33, min: 20, max: 40 },
+        { id: "F16", stock: 22, min: 20, max: 40 },
+        { id: "F17", stock: 15, min: 20, max: 40 },
+        { id: "F18", stock: 55, min: 20, max: 40 },
+        { id: "F19", stock: 42, min: 5, max: 20 },
+        { id: "F20", stock: 38, min: 5, max: 20 },
+        { id: "F21", stock: 15, min: 5, max: 20 },
+        { id: "F22", stock: 18, min: 15, max: 30 },
+        { id: "F23", stock: 12, min: 15, max: 30 },
+        { id: "F24", stock: 25, min: 10, max: 20 },
+        { id: "F25", stock: 33, min: 20, max: 40 }
+    ];
+    return dataRecovered;
 }
 
 function init() {
@@ -700,3 +770,4 @@ function mostrarInfoCaja(idCaja) {
 
 
 </html>
+
